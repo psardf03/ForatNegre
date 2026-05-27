@@ -21,9 +21,9 @@ Ara bé, si voleu fer trajectòries més xules, també podeu! Basta situar-vos e
 
 ## Exemple output
 Una vegada executat el programa, podeu fer trajectòries amb moviment radial, simplement fent clic al ratolí, i obtindreu casos com aquest:
-(images/MovimentRadialBH.png)
+![Moviment Radial al voltant del forat negre](images/MovimentRadialBH.png)
 
 O un cas més interessant com l'òrbita circular:
-(images/OrbitesCircularsBH.png)
+![Orbites Circulars al voltant del forat negre)(images/OrbitesCircularsBH.png)
 
 ## Bibliografia
