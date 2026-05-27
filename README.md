@@ -9,7 +9,6 @@ Per la simetria esfèrica de l'espai-temps, podem desfer-nos de $\theta$, en el 
 
 El codi resol aquestes equacions numèricament emprant el mètode de Runge Kutta 4: rk4_step(state, mass,h), on state=$(r,\phi,p_r,p_\phi)$, mass la massa del forat negre, i h el pas d'integració.
 Agraïr particularment a Hector Olivares, ja que hem seguit principalment l'estructura del seu article: Final Project: Orbits around black holes.
-L
 
 ## How to run
 Ara, si voleu posar-vos a jugar, simplement heu d'executar el codi Python anterior (assegurau-vos de tenir totes les llibreries necessàries, que apareixen a l'inici del document). Se us obrirà una nova finestra, on ja podeu començar a executar les trajectòries que desitjeu. Adalt, on posa massa, aquesta és la massa del forat negre, que podeu canviar al vostre gust, desde 1 fins a 5 (tot i que és aconsellable posar una massa entre 1 i 2 per a que el forat negre no ocupi tota la pantalla). Per canviar-la simplement heu de prémer la fletxa del teclat cap a dalt (augmentar) o cap abaix (disminuir). El bcrit és un paràmetre que relaciona el moment angular de la partícula amb la seva energia. Apareix en els càlculs teòrics de les geodèsiques, i no importa el tengueu en compte a la pràctica. Només afegir que si aquest paràmetre fos exactament bcrit=3·sqrt(3)·M, on M és la massa del forat negre, l'òrbita del fotó seria circular, és a dir, faria voltes indefinidament al voltant del forat negre (Spoiler: els errors numèrics vos impediran recrear aquesta situació a la pràctica). També apareix una escala de 4.5 AU. Això simplement assenyala que aquell segment de pantalla correspon a 4.5 anys llum en l'espai-temps que simulam.
@@ -21,5 +20,10 @@ Hi ha 3 regions diferenciades: la regió de captura, en granat/vermell, represen
 Ara bé, si voleu fer trajectòries més xules, també podeu! Basta situar-vos en el punt on volgueu començar la trajectòria, i arrossegar amb el ratolí. Així, us apareixerà una predicció de com actuarà inicialment la vostra trajectòria, i podeu fer que un fotó en la zona de dispersió caigui al forat negre, o a l'enrevés, que el fotó escapi tirant-lo des de la regió de captura. Tot dependrà de la direcció que li doneu inicialment a la vostra trajectòria. Per últim, si heu pintat moltes corbes a la vostra pantalla, sempre podeu netejar la pantalla prement la tecla C del vostre teclat, no importa reiniciar el programa.
 
 ## Exemple output
+Una vegada executat el programa, podeu fer trajectòries amb moviment radial, simplement fent clic al ratolí, i obtindreu casos com aquest:
+(images/MovimentRadialBH.png)
+
+O un cas més interessant com l'òrbita circular:
+(images/OrbitesCircularsBH.png)
 
 ## Bibliografia
