@@ -25,7 +25,7 @@ La imatge del background del programa ha estat obtinguda del JWST (James Webb Sp
 
 ## Exemple output
 Una vegada executat el programa, podeu fer trajectòries amb moviment radial, simplement fent clic al ratolí, i obtindreu casos com aquest:
-![Moviment Radial al voltant del forat negre](images/MovimentRadialBH.png)
+![Moviment Radial al voltant del forat negre](images/MovimentRadial.png)
 
 O un cas més interessant com l'òrbita circular:
 ![Orbites Circulars al voltant del forat negre](images/OrbitesCircularsBH.png)
