@@ -28,7 +28,7 @@ Una vegada executat el programa, podeu fer trajectòries amb moviment radial, si
 ![Moviment Radial al voltant del forat negre](images/MovimentRadial.png)
 
 O un cas més interessant com l'òrbita circular:
-![Orbites Circulars al voltant del forat negre](images/OrbitesCircularsBH.png)
+![Orbites Circulars al voltant del forat negre](images/OrbitesCirculars.png)
 
 Si voleu fer voltros els llançaments, arrossegau el ratolí en la part de la pantalla on volgueu que comenci la trajectòria, i en haver vist les prediccions i elegit la que volgueu, deixeu anar el ratolí. Obtindreu trajectòries així:
 ![Trajectories](images/trajectories.png)
