@@ -21,6 +21,8 @@ Hi ha 3 regions diferenciades: la regió de captura, en granat/vermell, represen
 
 Ara bé, si voleu fer trajectòries més xules, també podeu! Basta situar-vos en el punt on volgueu començar la trajectòria, i arrossegar amb el ratolí. Així, us apareixerà una predicció de com actuarà inicialment la vostra trajectòria, i podeu fer que un fotó en la zona de dispersió caigui al forat negre, o a l'enrevés, que el fotó escapi tirant-lo des de la regió de captura. Tot dependrà de la direcció que li doneu inicialment a la vostra trajectòria. Per últim, si heu pintat moltes corbes a la vostra pantalla, sempre podeu netejar la pantalla prement la tecla C del vostre teclat, no importa reiniciar el programa.
 
+La imatge del background del programa ha estat obtinguda del JWST (James Webb Space Telescope).
+
 ## Exemple output
 Una vegada executat el programa, podeu fer trajectòries amb moviment radial, simplement fent clic al ratolí, i obtindreu casos com aquest:
 ![Moviment Radial al voltant del forat negre](images/MovimentRadialBH.png)
