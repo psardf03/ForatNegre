@@ -2,6 +2,12 @@ import pygame
 import math
 import sys
 import random
+import os
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 # --- CONFIGURACIÓ INICIAL ---
 # Mides de la pantalla i constants de la simulació
@@ -13,6 +19,8 @@ M = 2.0 # Aquesta és la massa del forat negre
 
 # --- PALETA DE COLORS ---
 COLOR_BG = (5, 5, 10)
+USE_REAL_BACKGROUND = True
+JWST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "JWST.jpg")
 
 # Colors per les zones geomètriques d'impacte
 ZONE_DISP_COL = (10, 8, 20)
@@ -72,6 +80,11 @@ for _ in range(200):
     })
 
 active_photons = [] # Aquí guardarem totes les línies de llum que anem disparant
+background_source = None
+background_cache = {
+    'key': None,
+    'surface': None
+}
 
 # --- FUNCIONS ---
 
@@ -84,6 +97,190 @@ def get_current_center():
 def math_to_screen(x, y):
     cx, cy = get_current_center()
     return int(cx + x * SCALE), int(cy - y * SCALE)
+
+# Manté un valor dins d'un interval.
+def clamp(value, low, high):
+    return max(low, min(high, value))
+
+def load_real_background():
+    global background_source
+
+    if background_source is None:
+        background_source = pygame.image.load(JWST_IMAGE_PATH).convert()
+
+    return background_source
+
+def scale_cover(surface, width, height):
+    src_w, src_h = surface.get_size()
+    scale = max(width / src_w, height / src_h)
+    scaled_w = max(1, int(src_w * scale))
+    scaled_h = max(1, int(src_h * scale))
+    scaled = pygame.transform.smoothscale(surface, (scaled_w, scaled_h))
+    crop = pygame.Rect(
+        (scaled_w - width) // 2,
+        (scaled_h - height) // 2,
+        width,
+        height
+    )
+    return scaled.subsurface(crop).copy()
+
+def build_lensed_background(width, height, center, rs_px, rph_px):
+    base = scale_cover(load_real_background(), width, height)
+
+    if np is None:
+        return base
+
+    source = pygame.surfarray.array3d(base)
+    result = source.copy()
+    cx, cy = center
+    x = np.arange(width, dtype=np.float32)[:, None]
+    y = np.arange(height, dtype=np.float32)[None, :]
+    dx = x - cx
+    dy = y - cy
+    dist = np.sqrt(dx * dx + dy * dy)
+    theta = np.arctan2(dy, dx)
+
+    shadow_px = rs_px * 0.95
+    lens_outer_px = max(rph_px * 2.45, rs_px + 1)
+    lens_t = np.clip((lens_outer_px - dist) / (lens_outer_px - shadow_px), 0.0, 1.0)
+    strong_t = np.clip((rph_px * 1.45 - dist) / (rph_px * 1.45 - shadow_px), 0.0, 1.0)
+    mask = (dist < lens_outer_px) & (dist > rs_px * 0.35)
+
+    deflection = (rs_px * rs_px) / np.maximum(dist, rs_px * 0.55)
+    src_r = np.maximum(1.0, dist - deflection * (0.25 + 0.62 * strong_t) * lens_t)
+    ring_mask = dist < rph_px * 1.14
+    src_r = np.where(ring_mask, np.maximum(1.0, src_r * 0.72), src_r)
+
+    arc = 0.006 + 0.060 * (strong_t ** 1.4) + 0.010 * lens_t
+    samples = []
+    for offset in (-arc, -arc * 0.45, 0, arc * 0.45, arc):
+        sample_theta = theta + offset
+        sx = np.clip(np.rint(cx + np.cos(sample_theta) * src_r).astype(np.int32), 0, width - 1)
+        sy = np.clip(np.rint(cy + np.sin(sample_theta) * src_r).astype(np.int32), 0, height - 1)
+        samples.append(source[sx, sy])
+
+    lensed = np.maximum.reduce(samples)
+    brightness = (1.0 + 0.34 * lens_t)[..., None]
+    lensed = np.clip(lensed.astype(np.float32) * brightness, 0, 255).astype(np.uint8)
+    result[mask] = lensed[mask]
+
+    return pygame.surfarray.make_surface(result)
+
+def get_lensed_background(width, height, center, rs_px, rph_px):
+    key = (width, height, int(center[0]), int(center[1]), int(rs_px), int(rph_px))
+
+    if background_cache['key'] != key:
+        background_cache['key'] = key
+        background_cache['surface'] = build_lensed_background(width, height, center, rs_px, rph_px)
+
+    return background_cache['surface']
+
+def draw_transparent_rect(surface, color, rect, alpha):
+    layer = pygame.Surface((rect[2], rect[3]), pygame.SRCALPHA)
+    layer.fill((*color, alpha))
+    surface.blit(layer, (rect[0], rect[1]))
+
+def draw_soft_star(surface, x, y, size, color, glow=1.0):
+    x, y = int(x), int(y)
+    if not (-12 <= x <= surface.get_width() + 12 and -12 <= y <= surface.get_height() + 12):
+        return
+
+    halo_radius = max(2, int(size * 3.5 * glow))
+    halo = pygame.Surface((halo_radius * 2 + 1, halo_radius * 2 + 1), pygame.SRCALPHA)
+
+    for r in range(halo_radius, 0, -1):
+        alpha = int(28 * glow * (1 - r / (halo_radius + 1)) ** 2)
+        pygame.draw.circle(halo, (*color, alpha), (halo_radius, halo_radius), r)
+
+    surface.blit(halo, (x - halo_radius, y - halo_radius))
+    pygame.draw.circle(surface, color, (x, y), max(1, size))
+
+    if size > 1:
+        pygame.draw.line(surface, color, (x - size - 1, y), (x + size + 1, y), 1)
+        pygame.draw.line(surface, color, (x, y - size - 1), (x, y + size + 1), 1)
+
+# Dibuixa una estrella deformada per una lent gravitacional aproximada.
+# No és un traçat de raigs complet: és un efecte visual local que empeny
+# la imatge cap a fora i l'estira tangencialment quan s'apropa a l'horitzó.
+def draw_lensed_star(surface, center, rel_x, rel_y, size, color, rs_px, rph_px, visible_h):
+    cx, cy = center
+    dist = math.hypot(rel_x, rel_y)
+
+    if dist <= 0.01:
+        return
+
+    shadow_px = rs_px * 0.96
+    lens_outer_px = max(rph_px * 2.7, rs_px + 1)
+
+    theta = math.atan2(rel_y, rel_x)
+    lens_t = clamp((lens_outer_px - dist) / (lens_outer_px - shadow_px), 0.0, 1.0)
+    strong_t = clamp((rph_px * 1.35 - dist) / (rph_px * 1.35 - shadow_px), 0.0, 1.0)
+
+    apparent_dist = dist
+    if lens_t > 0:
+        deflection = (rs_px * rs_px) / max(dist, rs_px * 0.6)
+        apparent_dist += deflection * 0.42 * lens_t
+
+    # Les fonts molt properes a l'ombra es veuen com fragments d'anell.
+    if dist < rph_px * 1.15:
+        apparent_dist = max(apparent_dist, rph_px * (1.02 + 0.12 * strong_t))
+    if dist < shadow_px:
+        lens_t = 1.0
+        strong_t = 1.0
+        apparent_dist = rph_px * 1.14
+
+    x = cx + math.cos(theta) * apparent_dist
+    y = cy + math.sin(theta) * apparent_dist
+
+    if not (-30 <= x <= surface.get_width() + 30 and -30 <= y <= visible_h + 30):
+        return
+
+    bright = 1.0 + 0.45 * lens_t
+    lensed_color = tuple(min(255, int(c * bright)) for c in color)
+
+    if lens_t < 0.18:
+        draw_soft_star(surface, x, y, size, lensed_color, 0.65)
+        return
+
+    arc_span = 0.018 + 0.16 * (strong_t ** 1.4) + 0.045 * lens_t
+    samples = max(4, int(6 + 18 * strong_t))
+    pts = []
+
+    for i in range(samples):
+        a = -arc_span + (2 * arc_span * i / (samples - 1))
+        pts.append((
+            int(cx + math.cos(theta + a) * apparent_dist),
+            int(cy + math.sin(theta + a) * apparent_dist)
+        ))
+
+    width = max(1, int(size + 2 * strong_t))
+    glow_width = width + max(2, int(4 * strong_t))
+    arc_layer = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+    pygame.draw.lines(arc_layer, (*lensed_color, 42), False, pts, glow_width)
+    pygame.draw.lines(arc_layer, (*lensed_color, 110), False, pts, max(1, width + 1))
+    surface.blit(arc_layer, (0, 0))
+    pygame.draw.aalines(surface, lensed_color, False, pts)
+
+def draw_space_polish(surface, width, sim_h, center):
+    overlay = pygame.Surface((width, sim_h), pygame.SRCALPHA)
+
+    for y in range(sim_h):
+        t = y / max(1, sim_h - 1)
+        alpha = int(34 * (1 - abs(t - 0.5) * 1.8))
+        pygame.draw.line(overlay, (10, 18, 34, max(0, alpha)), (0, y), (width, y))
+
+    cx, cy = center
+    vignette = pygame.Surface((width, sim_h), pygame.SRCALPHA)
+    max_dist = math.hypot(max(cx, width - cx), max(cy, sim_h - cy))
+    step = 18
+    for y in range(0, sim_h, step):
+        for x in range(0, width, step):
+            dist = math.hypot(x + step / 2 - cx, y + step / 2 - cy)
+            alpha = int(42 * clamp((dist / max_dist - 0.35) / 0.65, 0.0, 1.0))
+            pygame.draw.rect(vignette, (0, 0, 0, alpha), (x, y, step, step))
+
+    surface.blit(overlay, (0, 0))
+    surface.blit(vignette, (0, 0))
 
 # El mateix però al revés (del ratolí a física)
 def screen_to_math(sx, sy):
@@ -259,7 +456,7 @@ def update_photon(p):
 
 # --- BUCLE PRINCIPAL ---
 
-is_dragging = False # Variable per saber si estem arrossegant el ratolí
+is_dragging = False  # Variable per saber si estem arrossegant el ratolí
 
 start_math = (0, 0)
 curr_math = (0, 0)
@@ -289,9 +486,9 @@ while running:
 
         # Si deixem anar el clic (disparem el fotó)
         elif (
-            event.type == pygame.MOUSEBUTTONUP
-            and event.button == 1
-            and is_dragging
+                event.type == pygame.MOUSEBUTTONUP
+                and event.button == 1
+                and is_dragging
         ):
 
             is_dragging = False
@@ -309,7 +506,7 @@ while running:
             )
 
             if data:
-                active_photons.append(data) # L'afegeim a l'array perquè es renderitzi
+                active_photons.append(data)  # L'afegeim a l'array perquè es renderitzi
 
         # Si estem movent el ratolí mentre apretam
         elif event.type == pygame.MOUSEMOTION and is_dragging:
@@ -320,14 +517,14 @@ while running:
         elif event.type == pygame.KEYDOWN:
 
             if event.key == pygame.K_c:
-                active_photons.clear() # C: Netejam la pantalla si ja hi ha massa línies
+                active_photons.clear()  # C: Netejam la pantalla si ja hi ha massa línies
 
             elif event.key == pygame.K_UP:
-                M = min(5.0, M + 0.1) # Pujam la massa i escombram la pantalla perquè els fotons ja no tindrien sentit
+                M = min(5.0, M + 0.1)  # Pujam la massa i escombram la pantalla perquè els fotons ja no tindrien sentit
                 active_photons.clear()
 
             elif event.key == pygame.K_DOWN:
-                M = max(1.0, M - 0.1) # Baixam la massa, però no menys d'1
+                M = max(1.0, M - 0.1)  # Baixam la massa, però no menys d'1
                 active_photons.clear()
 
     # Toca moure la física de tots els fotons que estiguin vius a la pantalla
@@ -336,129 +533,79 @@ while running:
         if p['alive']:
             update_photon(p)
 
-    screen.fill(COLOR_BG)
-
-    # 1. Zones de fons (Aquelles franges horitzontals de colors)
-
     b_crit = 3 * math.sqrt(3) * M
     b_px = int(b_crit * SCALE)
+    rs_px = int(2 * M * SCALE)  # Radi de Schwarzschild en píxels
+    rph_px = int(3 * M * SCALE)  # Esfera de fotons en píxels
 
-    # Pintam la zona on es dispersen
-    pygame.draw.rect(
-        screen,
-        ZONE_DISP_COL,
-        (0, 0, curr_w, cy - b_px)
-    )
-
-    # Pintam la banda central de "zona de perill" (captura)
-    pygame.draw.rect(
-        screen,
-        ZONE_CAPT_COL,
-        (0, cy - b_px, curr_w, 2 * b_px)
-    )
-
-    # Pintam l'altra zona de dispersió (a sota)
-    pygame.draw.rect(
-        screen,
-        ZONE_DISP_COL,
-        (0, cy + b_px, curr_w, curr_sim_h - (cy + b_px))
-    )
-
-    # Línies exactes del límit crític superior i inferior
-    pygame.draw.line(
-        screen,
-        ZONE_CRIT_COL,
-        (0, cy - b_px),
-        (curr_w, cy - b_px),
-        2
-    )
-
-    pygame.draw.line(
-        screen,
-        ZONE_CRIT_COL,
-        (0, cy + b_px),
-        (curr_w, cy + b_px),
-        2
-    )
-
-    # 2. Estrelles
-
-    rs_px = int(2 * M * SCALE) # Radi de Schwarzschild en píxels
-    rph_px = int(3 * M * SCALE) # Esfera de fotons en píxels
-
-    for s in stars_data:
-
-        # Posició pantalla
-        xr = cx + s['rel_x']
-        yr = cy + s['rel_y']
-
-        # Distància al centre del BH
-        dist = math.hypot(
-            xr - cx,
-            yr - cy
+    if USE_REAL_BACKGROUND:
+        screen.blit(
+            get_lensed_background(curr_w, curr_sim_h, (cx, cy), rs_px, rph_px),
+            (0, 0)
         )
+    else:
+        screen.fill(COLOR_BG)
 
-        # Eliminar estrelles entre 2M i 3M
-        if rs_px < dist < rph_px:
-            continue
+    # 1. Zones de fons (superposades amb transparència sobre la imatge real)
+    # CORREGIT: Clamped per evitar que es dibuixin fora de curr_sim_h i facin requadres estranys
+    draw_transparent_rect(screen, ZONE_DISP_COL, (0, 0, curr_w, clamp(cy - b_px, 0, curr_sim_h)), 72)
 
-        # Dibuixar només les visibles
-        if 0 <= xr <= curr_w and 0 <= yr <= curr_sim_h:
-            pygame.draw.circle(
+    y_top_capt = clamp(cy - b_px, 0, curr_sim_h)
+    y_bot_capt = clamp(cy + b_px, 0, curr_sim_h)
+    draw_transparent_rect(screen, ZONE_CAPT_COL, (0, y_top_capt, curr_w, y_bot_capt - y_top_capt), 92)
+
+    draw_transparent_rect(screen, ZONE_DISP_COL, (0, y_bot_capt, curr_w, clamp(curr_sim_h - y_bot_capt, 0, curr_sim_h)),
+                          72)
+
+    # Línies exactes del límit crític superior i inferior (només si estan dins la pantalla visible)
+    if cy - b_px < curr_sim_h:
+        pygame.draw.line(screen, ZONE_CRIT_COL, (0, cy - b_px), (curr_w, cy - b_px), 2)
+    if cy + b_px < curr_sim_h:
+        pygame.draw.line(screen, ZONE_CRIT_COL, (0, cy + b_px), (curr_w, cy + b_px), 2)
+
+    if not USE_REAL_BACKGROUND:
+        draw_space_polish(screen, curr_w, curr_sim_h, (cx, cy))
+
+        # 2. Estrelles procedurals, només si no s'usa la imatge real de fons
+        for s in stars_data:
+            draw_lensed_star(
                 screen,
+                (cx, cy),
+                s['rel_x'],
+                s['rel_y'],
+                s['size'],
                 s['color'],
-                (int(xr), int(yr)),
-                s['size']
+                rs_px,
+                rph_px,
+                curr_sim_h
             )
 
     # 3. Forat Negre i Esfera Fotons
-
-    # Un cercle ben negre per al forat (2M)
     pygame.draw.circle(screen, BLACK, (cx, cy), rs_px)
-    pygame.draw.circle(screen, GRAY, (cx, cy), rs_px, 2) # i un contorn per si de cas no es veu
+    pygame.draw.circle(screen, GRAY, (cx, cy), rs_px, 2)
 
-    # Un altre cercle per la Photon Sphere a 3M, amb el color crític
-    pygame.draw.circle(
-        screen,
-        TRAJ_CRIT,
-        (cx, cy),
-        rph_px,
-        2
-    )
-
-    pygame.draw.circle(
-        screen,
-        (120, 100, 0),
-        (cx, cy),
-        rph_px + 2,
-        1
-    )
+    pygame.draw.circle(screen, TRAJ_CRIT, (cx, cy), rph_px, 2)
+    pygame.draw.circle(screen, (120, 100, 0), (cx, cy), rph_px + 2, 1)
 
     # 4. Trajectòries i Equacions
-
     for p in active_photons:
-
         if len(p['points_math']) > 1:
-
             pts = [
                 math_to_screen(mx, my)
                 for mx, my in p['points_math']
             ]
 
-            # Dibuixam el fil de la trajectòria
             pygame.draw.lines(
                 screen,
                 p['color']
                 if p['alive'] or not p['captured']
-                else (180, 0, 0), # Si es mor al final, el fem vermell fosc
+                else (180, 0, 0),
                 False,
                 pts,
                 2
             )
 
-            # Aquí escrivim l'equació a sobre de cada línia d'inici
             sx, sy = math_to_screen(*p['start_math'])
-
             txt = font.render(
                 f"(dr/dφ)² = r⁴/{p['b'] ** 2:.1f} - r²(1 - {2 * M:.1f}/r)",
                 True,
@@ -468,66 +615,40 @@ while running:
             txt_w = txt.get_width()
             txt_h = txt.get_height()
 
-            # Ajustam on posam el text perquè no surti per la dreta de la pantalla
             if sx + 12 + txt_w > curr_w:
                 pos_x = sx - txt_w - 12
             else:
                 pos_x = sx + 12
 
             pos_y = sy - 8
-
             if pos_y < 0:
                 pos_y = sy + 15
 
-            bg = pygame.Surface(
-                (txt_w + 8, txt_h + 4),
-                pygame.SRCALPHA
-            )
-
-            # Li posam un fonduet negre al text perquè es pugui llegir a sobre de les estrelles
+            bg = pygame.Surface((txt_w + 8, txt_h + 4), pygame.SRCALPHA)
             bg.fill((0, 0, 0, 180))
 
             screen.blit(bg, (pos_x - 4, pos_y - 2))
             screen.blit(txt, (pos_x, pos_y))
 
     # 5. Barra d'Escala i UI
+    pygame.draw.line(screen, WHITE, (curr_w - 150, 35), (curr_w - 50, 35), 2)
 
-    # Barra d'1 Astronomical Unit a dalt a la dreta
-    pygame.draw.line(
-        screen,
-        WHITE,
-        (curr_w - 150, 35),
-        (curr_w - 50, 35),
-        2
-    )
-
-    txt_esc = font.render(
-        f"{100 / SCALE:.1f} AU",
-        True,
-        WHITE
-    )
+    txt_esc = font.render(f"{100 / SCALE:.1f} AU", True, WHITE)
+    screen.blit(txt_esc, (curr_w - 100 - txt_esc.get_width() // 2, 15))
 
     screen.blit(
-        txt_esc,
-        (curr_w - 100 - txt_esc.get_width() // 2, 15)
-    )
-
-    # Info important (M i b_crit) a dalt a l'esquerra
-    screen.blit(
-        font_bold.render(
-            f"Massa (M): {M:.1f} | bcrit: {b_crit:.2f}",
-            True,
-            WHITE
-        ),
+        font_bold.render(f"Massa (M): {M:.1f} | bcrit: {b_crit:.2f}", True, WHITE),
         (20, 20)
     )
 
-    # --- PREDICCIÓ VISUAL RESTAURADA ---
+    # --- AFEGIT: TEXT DE CRÈDIT JWST ---
+    # Es renderitza un text petit a la cantonada inferior dreta de la simulació
+    txt_credit = font.render("Credit: JWST", True, (150, 150, 150))
+    # Ho col·loquem 5 píxels a l'esquerra del marge dret i 20 píxels per sobre de la llegenda
+    screen.blit(txt_credit, (curr_w - txt_credit.get_width() - 10, curr_sim_h - 20))
 
-    # Si estem apuntant... (aquell "laser" que et diu per on anirà abans de deixar anar)
+    # --- PREDICCIÓ VISUAL ---
     if is_dragging:
-
-        # Línia blava cap enrere, indica de on i cap a on disparam
         pygame.draw.line(
             screen,
             BLUE_AIM,
@@ -536,25 +657,17 @@ while running:
             1
         )
 
-        p_prev = get_physics_from_input(
-            *start_math,
-            *curr_math
-        )
+        p_prev = get_physics_from_input(*start_math, *curr_math)
 
-        # Calculam una minitrajectòria provisional i la pintam fineta
         if p_prev:
-
             t_st = list(p_prev['state'])
             pts_p = []
 
             for i in range(400):
-
                 h = calculate_step(t_st[0], M)
-
                 t_st = rk4_step(t_st, M, h)
 
                 if i % 2 == 0:
-
                     pts_p.append(
                         math_to_screen(
                             t_st[0] * math.cos(t_st[1]),
@@ -566,20 +679,9 @@ while running:
                     break
 
             if len(pts_p) > 1:
-
-                pygame.draw.lines(
-                    screen,
-                    p_prev['color'],
-                    False,
-                    pts_p,
-                    1
-                )
-
-    # -----------------------------------
+                pygame.draw.lines(screen, p_prev['color'], False, pts_p, 1)
 
     # Llegenda Ampliada (a la part inferior)
-
-    # Quadre de sota on posam què vol dir cada color
     pygame.draw.rect(
         screen,
         (20, 20, 30),
@@ -596,37 +698,16 @@ while running:
 
     step_x = curr_w // len(labels)
 
-    # Un petit for perquè escrigui tots els labels sense picar-los un a un
     for i, (col, txt, shape) in enumerate(labels):
-
         x_pos = 15 + i * step_x
-
         if shape == "rect":
-
-            pygame.draw.rect(
-                screen,
-                col,
-                (x_pos, curr_sim_h + 15, 20, 20)
-            )
-
+            pygame.draw.rect(screen, col, (x_pos, curr_sim_h + 15, 20, 20))
         else:
+            pygame.draw.circle(screen, col, (x_pos + 10, curr_sim_h + 25), 9, 2)
 
-            pygame.draw.circle(
-                screen,
-                col,
-                (x_pos + 10, curr_sim_h + 25),
-                9,
-                2
-            )
+        screen.blit(font.render(txt, True, WHITE), (x_pos + 30, curr_sim_h + 18))
 
-        screen.blit(
-            font.render(txt, True, WHITE),
-            (x_pos + 30, curr_sim_h + 18)
-        )
-
-    # Aquí s'acaba de dibuixar tot el frame, li ensenyem a l'usuari
     pygame.display.flip()
-
     clock.tick(FPS)
 
-pygame.quit() 
+pygame.quit()
