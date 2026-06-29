@@ -27,6 +27,10 @@ cd ForatNegre
 pip install pygame numpy
 python ForatNegre.py
 
+(També s'ha afegit una versió adaptada en google collab d'aquest codi, que podeu trobar a:
+https://colab.research.google.com/github/psardf03/ForatNegre/blob/main/Copia_de_ForatNegre.ipynb
+)
+
 Se us obrirà una nova finestra, on ja podeu començar a executar les trajectòries que desitjeu. Adalt, on posa massa, aquesta és la massa del forat negre, que podeu canviar al vostre gust, desde 1 fins a 5 (tot i que és aconsellable posar una massa entre 1 i 2 per a que el forat negre no ocupi tota la pantalla). Per canviar-la simplement heu de prémer la fletxa del teclat cap a dalt (augmentar) o cap abaix (disminuir). El bcrit és un paràmetre que relaciona el moment angular de la partícula amb la seva energia. Apareix en els càlculs teòrics de les geodèsiques, i no importa el tengueu en compte a la pràctica. Només afegir que si aquest paràmetre fos exactament bcrit=3·sqrt(3)·M, on M és la massa del forat negre, l'òrbita del fotó seria circular, és a dir, faria voltes indefinidament al voltant del forat negre (Spoiler: els errors numèrics vos impediran recrear aquesta situació a la pràctica). També apareix una escala de 4.5 AU. Això simplement assenyala que aquell segment de pantalla correspon a 4.5 unitats astronòmiques en l'espai-temps que simulam.
 
 Com veureu, en el centre hi ha el forat negre, envoltada en una òrbita gris que, com diu la llegenda, és l'horitzó d'esdeveniments. Quan la partícula arribi a aquesta franja gris, es deixarà de pintar l'òrbita, ja que es sap que no hi ha altre futur possible per a la partícula que caure a la singularitat del forat negre, just al centre de la pantalla. Una òrbita de color groc/daurat apareix propera a l'horitzó d'esdeveniments: l'esfera de fotons. Aquí és on la teoria diu que els fotons quedarien fent voltes indefinidament si el paràmetre bcrit d'abans fos bcrit=3·sqrt(3)·M. El que us passarà amb les trajectòries d'un paràmetre similar és una petita volta al voltant de l'esfera de fotons abans de sortir disparada cap a fora (escapa) o caurà cap a l'horitzó d'esdeveniments (cau a la singularitat).
