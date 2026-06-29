@@ -20,7 +20,7 @@ M = 2.0 # Aquesta és la massa del forat negre
 # --- PALETA DE COLORS ---
 COLOR_BG = (5, 5, 10)
 USE_REAL_BACKGROUND = True
-JWST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "JWST.jpg")
+JWST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "images", "JWST.jpg")
 
 # Colors per les zones geomètriques d'impacte
 ZONE_DISP_COL = (10, 8, 20)
