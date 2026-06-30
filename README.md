@@ -26,8 +26,11 @@ Quan l'executeu, vos apareixerà en primer lloc la pel·lícula del forat negre 
 Ara, si voleu posar-vos a jugar, simplement heu d'executar el codi Python ForatNegre.py (assegurau-vos de tenir totes les llibreries necessàries, que apareixen a l'inici del document). Com abans, basta copieu el següent text en la vostra terminal (per exemple, la terminal de PyCharm):
 
 git clone https://github.com/psardf03/ForatNegre.git
+
 cd ForatNegre
+
 pip install pygame numpy
+
 python ForatNegre.py
 
 (També s'ha afegit una versió adaptada en google collab d'aquest codi, que podeu trobar a:
