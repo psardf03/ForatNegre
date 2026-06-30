@@ -13,10 +13,13 @@ Agraïr particularment a Hector Olivares, ja que hem seguit principalment l'estr
 ## How to run
 Per executar el programa i recuperar l'animació del vídeo d'abans, heu d'agafar el codi de AnimacioBH.py. Basta copieu el següent text en la vostra terminal (per exemple, la terminal de PyCharm):
 
-git clone https://github.com/psardf03/ForatNegre.git \\
-cd ForatNegre \\
-pip install pygame numpy opencv-python \\
-python AnimacioBH.py \\
+git clone https://github.com/psardf03/ForatNegre.git 
+
+cd ForatNegre 
+
+pip install pygame numpy opencv-python 
+
+python AnimacioBH.py 
 
 Quan l'executeu, vos apareixerà en primer lloc la pel·lícula del forat negre en 3 dimensions, mostrant la curvatura de l'espai-temps. Una vegada acabi aquesta animació, passarà tot d'una a llençar trajectòries de fotons de manera aleatòria. S'imprimiran per pantalla fins a 7 trajectòries a la vegada: Quan es superi el límit, es reinicia de nou (simplement la part dels llançaments, no el vídeo del forat negre). En aquest programa no podreu interactuar, simplement observar diferents trajectòries generades aleatòriament. En voler tancar el programa, simplement heu de prémer la tecla Esc del vostre teclat.
 
