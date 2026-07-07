@@ -29,7 +29,7 @@ git clone https://github.com/psardf03/ForatNegre.git
 
 cd ForatNegre
 
-pip install pygame numpy
+python -m pip install pygame numpy
 
 python ForatNegre.py
 
