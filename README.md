@@ -71,9 +71,9 @@ S'han estudiat tres trajectòries dels fotons representatives:
 
 En tots els casos s'ha pres \(M=2\), de manera que
 
-\[
+$$
 b_\text{crit}=3\sqrt{3}M \simeq 10.392.
-\]
+$$
 
 L'error s'ha calculat comparant l'angle final \(\phi\) obtingut per cada mètode amb una solució de referència calculada amb RK4 i un pas d'integració 20 vegades més petit, ja que no disposem d'una solució analítica simple per comparar. Hem emprat l'angle \phi perquè en la simulació, l'estat del fotó és $(r,\phi,p_r,p_\phi)$, i el fotó pot acabar de dues maneres: captura, si arriba a prop de l'horitzó; o dispersió, si s'allunya molt. Quan acaba, cada mètode dona un valor final de $\phi$. Aquest angle indica per on ha girat el fotó al voltant del forat negre. Si el mètode és poc precís, aquest angle final surt més desviat.
 El temps indicat és el temps mitjà necessari per resoldre una trajectòria.
