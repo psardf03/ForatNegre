@@ -17,6 +17,16 @@ FPS = 60 # Perquè vagi fluid
 SCALE = 22.0 # Escala per passar de matemàtiques a píxels
 M = 2.0 # Aquesta és la massa del forat negre
 
+# Mètode d'integració numèrica actiu.
+# Es pot canviar durant la simulació amb:
+# 1 = Euler, 2 = Runge-Kutta 2, 3 = Runge-Kutta 4
+INTEGRATOR_METHOD = "RK4"
+INTEGRATOR_NAMES = {
+    "EULER": "Euler",
+    "RK2": "Runge-Kutta 2",
+    "RK4": "Runge-Kutta 4"
+}
+
 # --- PALETA DE COLORS ---
 COLOR_BG = (5, 5, 10)
 USE_REAL_BACKGROUND = True
@@ -307,7 +317,37 @@ def get_derivatives(state, mass):
 
     return [dr, dphi, dpr, 0]
 
+# Mètode d'Euler explícit.
+# És de primer ordre: és ràpid, però acumula més error.
+def euler_step(state, mass, h):
+    deriv = get_derivatives(state, mass)
+
+    return [
+        state[i] + h * deriv[i]
+        for i in range(4)
+    ]
+
+
+# Mètode Runge-Kutta de segon ordre (RK2, punt mig).
+# Primer estima la pendent inicial i després avalua la pendent al punt mig.
+def rk2_step(state, mass, h):
+    k1 = get_derivatives(state, mass)
+
+    mid_state = [
+        state[i] + h / 2 * k1[i]
+        for i in range(4)
+    ]
+
+    k2 = get_derivatives(mid_state, mass)
+
+    return [
+        state[i] + h * k2[i]
+        for i in range(4)
+    ]
+
+
 # Mètode Runge-Kutta de quart ordre (RK4).
+# És més costós que Euler i RK2, però dona molta més precisió per cada pas.
 def rk4_step(state, mass, h):
 
     k1 = get_derivatives(state, mass)
@@ -332,6 +372,19 @@ def rk4_step(state, mass, h):
         (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i])
         for i in range(4)
     ]
+
+
+# Tria quin mètode d'integració s'empra en cada pas.
+def integration_step(state, mass, h, method):
+    if method == "EULER":
+        return euler_step(state, mass, h)
+
+    if method == "RK2":
+        return rk2_step(state, mass, h)
+
+    # Per defecte, RK4.
+    return rk4_step(state, mass, h)
+
 
 # Ajustam el pas de temps (h). Si estem a prop de l'esfera de fotons (3M),
 # fem passos més petits
@@ -394,10 +447,11 @@ def get_physics_from_input(sx, sy, ex, ey, is_h=False):
         elif rc > 120:
             break # S'ha salvat, ha sortit volant lluny
 
-        test_st = rk4_step(
+        test_st = integration_step(
             test_st,
             M,
-            calculate_step(rc, M)
+            calculate_step(rc, M),
+            INTEGRATOR_METHOD
         )
 
     # Triam el color segons com de prop ha passat o si ha estat capturat
@@ -432,7 +486,7 @@ def update_photon(p):
 
         h = calculate_step(p['state'][0], M)
 
-        p['state'] = rk4_step(p['state'], M, h)
+        p['state'] = integration_step(p['state'], M, h, INTEGRATOR_METHOD)
 
         r = p['state'][0]
         phi = p['state'][1]
@@ -518,6 +572,18 @@ while running:
 
             if event.key == pygame.K_c:
                 active_photons.clear()  # C: Netejam la pantalla si ja hi ha massa línies
+
+            elif event.key == pygame.K_1:
+                INTEGRATOR_METHOD = "EULER"
+                active_photons.clear()
+
+            elif event.key == pygame.K_2:
+                INTEGRATOR_METHOD = "RK2"
+                active_photons.clear()
+
+            elif event.key == pygame.K_3:
+                INTEGRATOR_METHOD = "RK4"
+                active_photons.clear()
 
             elif event.key == pygame.K_UP:
                 M = min(5.0, M + 0.1)  # Pujam la massa i escombram la pantalla perquè els fotons ja no tindrien sentit
@@ -637,7 +703,11 @@ while running:
     screen.blit(txt_esc, (curr_w - 100 - txt_esc.get_width() // 2, 15))
 
     screen.blit(
-        font_bold.render(f"Massa (M): {M:.1f} | bcrit: {b_crit:.2f}", True, WHITE),
+        font_bold.render(
+            f"Massa (M): {M:.1f} | bcrit: {b_crit:.2f} | mètode: {INTEGRATOR_NAMES[INTEGRATOR_METHOD]}",
+            True,
+            WHITE
+        ),
         (20, 20)
     )
 
@@ -646,6 +716,9 @@ while running:
     txt_credit = font.render("Credit: JWST", True, (150, 150, 150))
     # Ho col·loquem 5 píxels a l'esquerra del marge dret i 20 píxels per sobre de la llegenda
     screen.blit(txt_credit, (curr_w - txt_credit.get_width() - 10, curr_sim_h - 20))
+
+    txt_controls = font.render("Controls: 1 Euler | 2 RK2 | 3 RK4 | C neteja | ↑/↓ massa", True, WHITE)
+    screen.blit(txt_controls, (20, curr_sim_h - 20))
 
     # --- PREDICCIÓ VISUAL ---
     if is_dragging:
@@ -665,7 +738,7 @@ while running:
 
             for i in range(400):
                 h = calculate_step(t_st[0], M)
-                t_st = rk4_step(t_st, M, h)
+                t_st = integration_step(t_st, M, h, INTEGRATOR_METHOD)
 
                 if i % 2 == 0:
                     pts_p.append(
