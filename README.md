@@ -7,8 +7,10 @@ Al document de ForatNegre.py teniu el codi complet de la simulació de les traje
 Entrant en la part matemàtica, hem de resoldre les equacions geodèsiques que seguiran els fotons.
 Per la simetria esfèrica de l'espai-temps, podem desfer-nos de $\theta$, en el sentit que qualsevol pla que passi pel centre és equivalent. En particular triam el pla equatorial, amb $\theta(\lambda)=\pi/2$, $\theta'=0$. També, com ens interessa la projecció espaial de la partícula, no tenim en compte $t$, i ens centram amb les coordenades $r$ i $\phi$. En lloc de resoldre equacions de segon ordre amb $r''$ i $\phi''$, introduim els moments $p_r$ i $p_\phi$. Així, s'obtenen les equacions (veure [Olivares](#olivares)) $r'=f(r)p_r$ on $f(r)=1-2M/r$, $p_r'=p_\phi^2/r^3 - (M/r^2)((1/f^2) + p_r^2)$, $\phi'=p_\phi/r^2$, on $p_\phi$ és el moment angular, constant, $p_\phi'=0$. 
 
-El codi resol aquestes equacions numèricament emprant el mètode de Runge Kutta 4: rk4_step(state, mass,h), on state=$(r,\phi,p_r,p_\phi)$, mass la massa del forat negre, i h el pas d'integració.
+El codi resol aquestes equacions numèricament emprant el mètode de Runge Kutta 4 com a cas base: rk4_step(state, mass,h), on state=$(r,\phi,p_r,p_\phi)$, mass la massa del forat negre, i h el pas d'integració.
 Agraïr particularment a Hector Olivares, ja que hem seguit principalment l'estructura del seu article: Final Project: Orbits around black holes.
+Ara, també hem afegit dos mètodes alternatius: el mètode d'Euler, i el mètode de Runge Kutta 2. Una vegada executat el codi, basta prémer la tecla 1 per mostrar les trajectòries calculades amb Euler, la tecla 2  per mostrar les trajectòries calculades amb Runge Kutta 2, i la tecla 3 (si s'ha canviat abans, d'entrada sempre és Runge Kutta 4) per les trajectòries calculades amb Runge Kutta 4.
+Posteriorment, analitzarem les principals diferències entre els tres mètodes.
 
 ## How to run
 Per executar el programa i recuperar l'animació del vídeo d'abans, heu d'agafar el codi de AnimacioBH.py. Basta copieu el següent text en la vostra terminal (per exemple, la terminal de PyCharm):
