@@ -56,8 +56,47 @@ Una vegada executat el programa, podeu fer trajectòries amb llançaments horitz
 O un cas més interessant com l'òrbita circular:
 ![Orbites Circulars al voltant del forat negre](images/OrbitesCirculars.png)
 
-Si voleu fer voltros els llançaments, arrossegau el ratolí en la part de la pantalla on volgueu que comenci la trajectòria, i en haver vist les prediccions i elegit la que volgueu, deixeu anar el ratolí. Obtindreu trajectòries així:
+Si voleu fer vosaltres els llançaments, arrossegau el ratolí en la part de la pantalla on volgueu que comenci la trajectòria, i en haver vist les prediccions i elegit la que volgueu, deixeu anar el ratolí. Obtindreu trajectòries així:
 ![Trajectories](images/TrajectoriesLliures.png)
+
+## Comparació numèrica dels mètodes d'integració
+
+Per justificar l'elecció del mètode d'integració, s'han comparat tres mètodes numèrics: Euler, Runge-Kutta de segon ordre (RK2) i Runge-Kutta de quart ordre (RK4). Els tres mètodes s'han aplicat a les mateixes equacions geodèsiques de Schwarzschild i amb les mateixes condicions inicials.
+
+S'han estudiat tres trajectòries dels fotons representatives:
+
+- un fotó que cau dins l'horitzó d'esdeveniments, corresponent al cas de **captura**;
+- un fotó molt proper al paràmetre crític, corresponent al cas proper a l'**esfera de fotons**;
+- un fotó que s'allunya del forat negre, corresponent al cas de **dispersió**.
+
+En tots els casos s'ha pres \(M=2\), de manera que
+
+\[
+b_\text{crit}=3\sqrt{3}M \simeq 10.392.
+\]
+
+L'error s'ha calculat comparant l'angle final \(\phi\) obtingut per cada mètode amb una solució de referència calculada amb RK4 i un pas d'integració 20 vegades més petit, ja que no disposem d'una solució analítica simple per comparar. Hem emprat l'angle \phi perquè en la simulació, l'estat del fotó és $(r,\phi,p_r,p_\phi)$, i el fotó pot acabar de dues maneres: captura, si arriba a prop de l'horitzó; o dispersió, si s'allunya molt. Quan acaba, cada mètode dona un valor final de $\phi$. Aquest angle indica per on ha girat el fotó al voltant del forat negre. Si el mètode és poc precís, aquest angle final surt més desviat.
+El temps indicat és el temps mitjà necessari per resoldre una trajectòria.
+
+| Fotó | b | Mètode | Destí | Error angular (rad) | Passos | Temps mitjà (ms) |
+|---|---:|---|---|---:|---:|---:|
+| Captura | 8.000 | Euler | captura | 1.355e-02 | 2337 | 2.287 |
+| Captura | 8.000 | RK2 | captura | 1.655e-03 | 2332 | 3.580 |
+| Captura | 8.000 | RK4 | captura | 2.685e-05 | 2331 | 6.531 |
+| Prop del límit crític | 10.392 | Euler | captura | -- | 8672 | 8.735 |
+| Prop del límit crític | 10.392 | RK2 | dispersió | 8.328e-05 | 13314 | 20.701 |
+| Prop del límit crític | 10.392 | RK4 | dispersió | 1.014e-08 | 13314 | 37.207 |
+| Dispersió | 12.000 | Euler | dispersió | 4.207e-03 | 4190 | 4.141 |
+| Dispersió | 12.000 | RK2 | dispersió | 1.446e-06 | 4198 | 6.435 |
+| Dispersió | 12.000 | RK4 | dispersió | 2.191e-09 | 4198 | 11.676 |
+
+En el cas proper al límit crític, Euler prediu captura mentre que la referència RK4 prediu dispersió. Per això no s'hi dona error angular: el destí final ja és diferent. Aquest cas mostra que, prop de l'esfera de fotons, petits errors numèrics poden canviar qualitativament el resultat.
+
+Els resultats mostren el comportament esperat. Euler és el mètode més ràpid, perquè només avalua les derivades una vegada per pas, però també és el menys precís. RK2 té un cost intermedi i redueix clarament l'error respecte d'Euler. RK4 és el més costós per pas, ja que fa quatre avaluacions de les derivades, però és el que dona errors més petits i una trajectòria més estable.
+
+Per aquest motiu, RK4 s'ha mantingut com a mètode per defecte de la simulació. Tot i que Euler i RK2 són útils per comparar el comportament dels integradors, RK4 ofereix la millor precisió en les regions sensibles de la trajectòria, especialment prop de \(r=3M\), l'esfera de fotons.
+
+
 ## Bibliografia
 
 <a id="olivares"></a>
