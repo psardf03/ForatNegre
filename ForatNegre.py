@@ -3,6 +3,8 @@ import math
 import sys
 import random
 import os
+import urllib.request
+from pathlib import Path
 
 try:
     import numpy as np
@@ -30,7 +32,7 @@ INTEGRATOR_NAMES = {
 # --- PALETA DE COLORS ---
 COLOR_BG = (5, 5, 10)
 USE_REAL_BACKGROUND = True
-JWST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "images", "JWST.jpg")
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 # Colors per les zones geomètriques d'impacte
 ZONE_DISP_COL = (10, 8, 20)
@@ -115,10 +117,66 @@ def clamp(value, low, high):
 def load_real_background():
     global background_source
 
-    if background_source is None:
-        background_source = pygame.image.load(JWST_IMAGE_PATH).convert()
+    if background_source is not None:
+        return background_source
 
-    return background_source
+    candidate_paths = [
+        SCRIPT_DIR / "JWST.jpg",
+        SCRIPT_DIR / "images" / "JWST.jpg",
+        Path.cwd() / "JWST.jpg",
+        Path.cwd() / "images" / "JWST.jpg",
+    ]
+
+    # Primer cercam la imatge localment
+    for image_path in candidate_paths:
+        if image_path.is_file():
+            print(f"Fons utilitzat: {image_path}")
+            background_source = pygame.image.load(str(image_path)).convert()
+            return background_source
+
+    # Si no existeix, intentam descarregar-la de GitHub
+    images_dir = SCRIPT_DIR / "images"
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    downloaded_path = images_dir / "JWST.jpg"
+
+    github_url = (
+        "https://raw.githubusercontent.com/"
+        "psardf03/ForatNegre/main/images/JWST.jpg"
+    )
+
+    try:
+        print("No s'ha trobat JWST.jpg. Es descarrega de GitHub...")
+        urllib.request.urlretrieve(github_url, str(downloaded_path))
+
+        print(f"Fons utilitzat: {downloaded_path}")
+        background_source = pygame.image.load(str(downloaded_path)).convert()
+        return background_source
+
+    except Exception as error:
+        print("No s'ha pogut carregar ni descarregar JWST.jpg.")
+        print("Detall:", error)
+
+        # Fons alternatiu si tot falla
+        fallback = pygame.Surface((WIDTH, HEIGHT))
+        fallback.fill(COLOR_BG)
+
+        rng = random.Random(4)
+
+        for _ in range(550):
+            x = rng.randrange(WIDTH)
+            y = rng.randrange(HEIGHT)
+            brightness = rng.randrange(150, 256)
+
+            pygame.draw.circle(
+                fallback,
+                (brightness, brightness, 255),
+                (x, y),
+                1
+            )
+
+        background_source = fallback.convert()
+        return background_source
 
 def scale_cover(surface, width, height):
     src_w, src_h = surface.get_size()
